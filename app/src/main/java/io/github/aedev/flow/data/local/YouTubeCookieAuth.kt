@@ -159,8 +159,8 @@ class YouTubeCookieAuth
 
         private fun Throwable.isCookieRejection(): Boolean =
             generateSequence(this) { it.cause }.any { error ->
-                error is ClientRequestException && error.response.status.value in setOf(401, 403)
-                    || error is NullPointerException
+                (error is ClientRequestException && error.response.status.value in setOf(401, 403)) ||
+                    error is NullPointerException
             }
 
         private companion object {

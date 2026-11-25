@@ -80,7 +80,7 @@ internal object YouTubeCookieParser {
     private fun parseNetscape(input: String): List<ParsedCookie> =
         input.lineSequence().mapNotNull { originalLine ->
             val line = originalLine.removePrefix("#HttpOnly_")
-            if (line.isBlank() || originalLine.startsWith('#') && !originalLine.startsWith("#HttpOnly_")) {
+            if (line.isBlank() || (originalLine.startsWith('#') && !originalLine.startsWith("#HttpOnly_"))) {
                 return@mapNotNull null
             }
             val columns = line.split('\t')
