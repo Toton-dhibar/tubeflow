@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.data.engagement.FeedInvalidationBus
 import io.github.aedev.flow.data.engagement.VideoEngagementUseCase
 import io.github.aedev.flow.data.local.*
+import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.localmedia.LocalMediaDetails
 import io.github.aedev.flow.data.localmedia.LocalMediaIds
 import io.github.aedev.flow.data.model.Comment
@@ -23,6 +24,8 @@ import io.github.aedev.flow.data.video.VideoQueueStore
 import io.github.aedev.flow.di.IoDispatcher
 import io.github.aedev.flow.di.NetworkIoDispatcher
 import io.github.aedev.flow.innertube.pages.VideoCommentSort
+import io.github.aedev.flow.innertube.models.AccountInfo
+import io.github.aedev.flow.data.comments.CommentPostUiState
 import io.github.aedev.flow.innertube.pages.VideoDescriptionPage
 import io.github.aedev.flow.player.EnhancedPlayerManager
 import io.github.aedev.flow.player.LifecyclePlaybackPreferences
@@ -57,6 +60,7 @@ class VideoPlayerViewModel
     constructor(
         @ApplicationContext private val context: Context,
         private val repository: YouTubeRepository,
+        private val youTubeCookieAuth: YouTubeCookieAuth,
         private val transcriptRepository: TranscriptRepository,
         private val viewHistory: ViewHistory,
         private val engagement: VideoEngagementUseCase,
@@ -149,6 +153,9 @@ class VideoPlayerViewModel
         val commentSortOptions: StateFlow<List<VideoCommentSort>> = comments.sortOptions
         val commentTotalText: StateFlow<String?> = comments.totalText
         val commentsDisabled: StateFlow<Boolean> = comments.isDisabled
+        val commentCreateParams: StateFlow<String?> = comments.createCommentParams
+        val commentPostState: StateFlow<CommentPostUiState> = comments.postState
+        val signedInAccount: StateFlow<AccountInfo?> = youTubeCookieAuth.account
 
         val oldestCommentsCapped: StateFlow<Boolean> = comments.oldestCapped
         val descriptionState: StateFlow<VideoDescriptionPage?> = descriptions.description
@@ -452,6 +459,21 @@ class VideoPlayerViewModel
         fun loadMoreCommentReplies(comment: Comment) {
             val videoId = _uiState.value.cachedVideo?.id ?: return
             comments.loadMoreReplies(videoId, comment)
+        }
+
+        fun postComment(text: String) {
+            val videoId = _uiState.value.cachedVideo?.id ?: return
+            if (youTubeCookieAuth.account.value == null) return
+            comments.postComment(videoId, text)
+        }
+
+        fun postCommentReply(
+            parent: Comment,
+            text: String,
+        ) {
+            val videoId = _uiState.value.cachedVideo?.id ?: return
+            if (youTubeCookieAuth.account.value == null) return
+            comments.postReply(videoId, parent, text)
         }
 
         fun toggleSkipSilence(isEnabled: Boolean) = settings.toggleSkipSilence(isEnabled)

@@ -5,9 +5,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.aedev.flow.data.comments.CommentPostUiState
 import io.github.aedev.flow.data.model.Comment
 import io.github.aedev.flow.innertube.pages.VideoCommentSort
 import io.github.aedev.flow.ui.components.shared.CommentSortFilter
+import io.github.aedev.flow.ui.components.shared.CommentComposerState
 import io.github.aedev.flow.ui.components.shared.CommentsTimedFollow
 import io.github.aedev.flow.ui.components.shared.applyVideoCommentFilters
 import io.github.aedev.flow.ui.components.shared.timedCommentMarks
@@ -32,6 +34,7 @@ data class PlayerCommentsUiState(
     val sortOptions: List<VideoCommentSort> = emptyList(),
     val isDisabled: Boolean = false,
     val oldestCapped: Boolean = false,
+    val commentComposer: CommentComposerState? = null,
 )
 
 @Composable
@@ -44,7 +47,23 @@ fun rememberPlayerCommentsUiState(viewModel: VideoPlayerViewModel): PlayerCommen
     val sortOptions by viewModel.commentSortOptions.collectAsStateWithLifecycle()
     val isDisabled by viewModel.commentsDisabled.collectAsStateWithLifecycle()
     val oldestCapped by viewModel.oldestCommentsCapped.collectAsStateWithLifecycle()
-    return remember(comments, isLoading, isLoadingMore, hasMore, totalText, sortOptions, isDisabled, oldestCapped) {
+    val commentCreateParams by viewModel.commentCreateParams.collectAsStateWithLifecycle()
+    val postState by viewModel.commentPostState.collectAsStateWithLifecycle()
+    val account by viewModel.signedInAccount.collectAsStateWithLifecycle()
+    val playerUiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val videoId = playerUiState.cachedVideo?.id
+    val composer =
+        remember(commentCreateParams, postState, account, videoId) {
+            videoId?.let {
+                CommentComposerState(
+                    videoKey = it,
+                    isSignedIn = account != null,
+                    canPostComment = !commentCreateParams.isNullOrBlank(),
+                    postState = postState,
+                )
+            }
+        }
+    return remember(comments, isLoading, isLoadingMore, hasMore, totalText, sortOptions, isDisabled, oldestCapped, composer) {
         PlayerCommentsUiState(
             comments = comments,
             isLoading = isLoading,
@@ -54,6 +73,7 @@ fun rememberPlayerCommentsUiState(viewModel: VideoPlayerViewModel): PlayerCommen
             sortOptions = sortOptions,
             isDisabled = isDisabled,
             oldestCapped = oldestCapped,
+            commentComposer = composer,
         )
     }
 }

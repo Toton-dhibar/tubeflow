@@ -46,7 +46,7 @@ object FlowRequestLog : Interceptor {
                 host = request.url.host,
                 path = request.url.encodedPath,
                 clientHeader = request.header("X-YouTube-Client-Name"),
-                body = request.bodyText(),
+                body = if (isCommentSubmission(request.url.encodedPath)) null else request.bodyText(),
                 videoQuery = request.url.queryParameter("v"),
             )
         val startNs = System.nanoTime()
@@ -69,6 +69,8 @@ object FlowRequestLog : Interceptor {
         host == "youtube.com" ||
             host.endsWith(".youtube.com") ||
             host == "youtubei.googleapis.com"
+
+    internal fun isCommentSubmission(path: String): Boolean = path.endsWith("/comment/create_comment")
 
     internal fun describe(
         method: String,

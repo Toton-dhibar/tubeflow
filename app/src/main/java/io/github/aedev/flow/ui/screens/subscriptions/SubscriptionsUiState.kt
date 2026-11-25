@@ -106,6 +106,7 @@ data class SubscriptionsUiState(
     /** Channels the last refresh could not reach at all; surfaced instead of silently showing less. */
     val failedChannelIds: Set<String> = emptySet(),
     val failedChannelReasons: Map<String, String> = emptyMap(),
+    val accountFeedUnavailable: Boolean = false,
 ) {
     /** The selected chip's channels, which scope its refreshes and reads; null for every subscription. */
     fun selectedGroupScope(): Set<String>? {

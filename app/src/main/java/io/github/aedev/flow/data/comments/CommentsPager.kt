@@ -9,6 +9,7 @@ import io.github.aedev.flow.player.PlaybackStartupPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,8 @@ private const val STARTUP_GATE_TIMEOUT_MS = 20_000L
  */
 private const val TIMED_PAGES_PER_ORDER = 8
 private const val TIMED_MORE_PAGES_PER_ORDER = 2
+private const val POST_COOLDOWN_MS = 60_000L
+internal const val VIDEO_COMMENT_TARGET = "video"
 
 /**
  * Pages Oldest reads of the Newest order before turning it around, about 500 comments. YouTube has no
@@ -99,6 +102,12 @@ internal class CommentsPager(
     private val _oldestCapped = MutableStateFlow(false)
     val oldestCapped: StateFlow<Boolean> = _oldestCapped.asStateFlow()
 
+    private val _createCommentParams = MutableStateFlow<String?>(null)
+    val createCommentParams: StateFlow<String?> = _createCommentParams.asStateFlow()
+
+    private val _postState = MutableStateFlow(CommentPostUiState())
+    val postState: StateFlow<CommentPostUiState> = _postState.asStateFlow()
+
     private var next: CommentsPageResult = CommentsPageResult.EMPTY
     private var loadJob: Job? = null
     private var loadingVideoId: String? = null
@@ -107,6 +116,7 @@ internal class CommentsPager(
     private var timedFromYouTube = false
     private var timedGeneration = 0
     private val repliesInFlight = mutableSetOf<String>()
+    private var cooldownJob: Job? = null
 
     /** Empties the list, for a video with no comments to fetch and for a player being torn down. */
     fun clear() {
@@ -127,6 +137,13 @@ internal class CommentsPager(
         _totalText.value = null
         _totalCount.value = null
         _isDisabled.value = false
+        _createCommentParams.value = null
+        _postState.value =
+            _postState.value.copy(
+                failure = null,
+                failureTarget = null,
+                successTarget = null,
+            )
     }
 
     fun load(videoId: String) {
@@ -170,10 +187,12 @@ internal class CommentsPager(
                     page.totalText?.let { _totalText.value = it }
                     page.totalCount?.let { _totalCount.value = it }
                     _isDisabled.value = page.disabled
+                    page.createCommentParams?.let { _createCommentParams.value = it }
                     var comments = page.comments.distinctByNonBlankKey(Comment::id)
                     var pages = 1
                     while (page.hasMore && pages < OLDEST_PAGE_LIMIT && isCurrentVideo(videoId)) {
                         page = fetch { fetchNextPage(videoId, page) } ?: break
+                        page.createCommentParams?.let { _createCommentParams.value = it }
                         comments = comments.mergeDistinctByNonBlankKey(page.comments, Comment::id)
                         pages++
                     }
@@ -278,6 +297,7 @@ internal class CommentsPager(
                     page.totalText?.let { _totalText.value = it }
                     page.totalCount?.let { _totalCount.value = it }
                     _isDisabled.value = page.disabled
+                    page.createCommentParams?.let { _createCommentParams.value = it }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -299,6 +319,13 @@ internal class CommentsPager(
             _totalText.value = null
             _totalCount.value = null
             _isDisabled.value = false
+            _createCommentParams.value = null
+            _postState.value =
+                _postState.value.copy(
+                    failure = null,
+                    failureTarget = null,
+                    successTarget = null,
+                )
         }
         loadingVideoId = videoId
         activeSortToken = sortToken
@@ -311,6 +338,109 @@ internal class CommentsPager(
         _hasMore.value = false
         _isLoadingMore.value = false
         _isLoading.value = true
+    }
+
+    fun postComment(
+        videoId: String,
+        commentText: String,
+    ) {
+        val params = _createCommentParams.value ?: return
+        submitComment(videoId, params, commentText, VIDEO_COMMENT_TARGET)
+    }
+
+    fun postReply(
+        videoId: String,
+        parent: Comment,
+        commentText: String,
+    ) {
+        val params = parent.replyParams ?: return
+        submitComment(videoId, params, commentText, parent.id)
+    }
+
+    private fun submitComment(
+        videoId: String,
+        params: String,
+        commentText: String,
+        target: String,
+    ) {
+        if (commentText.isBlank() || _postState.value.isPosting || _postState.value.isCoolingDown) return
+        _postState.value =
+            _postState.value.copy(
+                isPosting = true,
+                postingTarget = target,
+                failure = null,
+                failureTarget = null,
+                successTarget = null,
+            )
+        scope.launch {
+            try {
+                when (val result = source.postComment(videoId, params, commentText)) {
+                    is CommentPostResult.Posted -> {
+                        if (isCurrentVideo(videoId) && loadingVideoId == videoId) {
+                            if (target == VIDEO_COMMENT_TARGET) {
+                                _comments.value = listOf(result.comment) + _comments.value.filterNot { it.id == result.comment.id }
+                            } else {
+                                _comments.value =
+                                    _comments.value.map { comment ->
+                                        if (comment.id == target) {
+                                            comment.copy(
+                                                replies =
+                                                    listOf(result.comment) +
+                                                        comment.replies.filterNot { it.id == result.comment.id },
+                                            )
+                                        } else {
+                                            comment
+                                        }
+                                    }
+                            }
+                            _postState.value =
+                                _postState.value.copy(
+                                    successTarget = target,
+                                    successVersion = _postState.value.successVersion + 1,
+                                )
+                        }
+                    }
+
+                    is CommentPostResult.Failed ->
+                        if (isCurrentVideo(videoId) && loadingVideoId == videoId) {
+                            recordPostFailure(target, result.failure)
+                        }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (isCurrentVideo(videoId) && loadingVideoId == videoId) {
+                    recordPostFailure(target, CommentPostFailure.NETWORK)
+                }
+            } finally {
+                _postState.value =
+                    _postState.value.copy(
+                        isPosting = false,
+                        postingTarget = null,
+                    )
+            }
+        }
+    }
+
+    private fun recordPostFailure(
+        target: String,
+        failure: CommentPostFailure,
+    ) {
+        _postState.value =
+            _postState.value.copy(
+                failure = failure,
+                failureTarget = target,
+            )
+        if (failure == CommentPostFailure.RATE_LIMITED || failure == CommentPostFailure.SPAM_BLOCK) {
+            _postState.value = _postState.value.copy(isCoolingDown = true)
+            if (cooldownJob?.isActive != true) {
+                cooldownJob =
+                    scope.launch {
+                        delay(POST_COOLDOWN_MS)
+                        _postState.value = _postState.value.copy(isCoolingDown = false)
+                    }
+            }
+        }
     }
 
     private suspend fun awaitPlaybackGate(videoId: String) {
@@ -357,6 +487,7 @@ internal class CommentsPager(
     private suspend fun appendNextPage(videoId: String) {
         val page = fetchNextPage(videoId, next) ?: return
         if (!isCurrentVideo(videoId)) return
+        page.createCommentParams?.let { _createCommentParams.value = it }
         _comments.value = _comments.value.mergeDistinctByNonBlankKey(page.comments, Comment::id)
         next = page
         _hasMore.value = page.hasMore

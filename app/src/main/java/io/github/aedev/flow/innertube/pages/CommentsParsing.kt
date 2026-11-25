@@ -10,13 +10,62 @@ import io.github.aedev.flow.data.model.RichTextStyle
 import io.github.aedev.flow.data.model.RichTextTarget
 import io.github.aedev.flow.utils.YouTubeLink
 import io.github.aedev.flow.utils.youTubeBrowseLink
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 
 private const val HEART_STATE_HEARTED = "TOOLBAR_HEART_STATE_HEARTED"
+private val COMMENT_ERROR_TEXT_KEYS = setOf("message", "reason", "status", "description", "text")
+
+internal enum class CommentPostErrorHint {
+    COMMENTS_DISABLED,
+    RATE_LIMITED,
+    SPAM_BLOCK,
+    UNKNOWN,
+}
+
+internal class CommentPostResponseException(
+    val statusCode: Int,
+    val hint: CommentPostErrorHint,
+) : Exception("YouTube comment request failed")
+
+internal fun JsonElement.commentPostErrorHint(): CommentPostErrorHint {
+    val text =
+        buildString {
+            fun appendStrings(element: JsonElement) {
+                when (element) {
+                    is JsonObject ->
+                        element.forEach { (key, value) ->
+                            if (key in COMMENT_ERROR_TEXT_KEYS && value is JsonPrimitive) {
+                                value.contentOrNull?.let { append(it.lowercase()).append(' ') }
+                            } else if (value is JsonObject || value is JsonArray) {
+                                appendStrings(value)
+                            }
+                        }
+                    is JsonArray -> element.forEach(::appendStrings)
+                    else -> Unit
+                }
+            }
+            appendStrings(this@commentPostErrorHint)
+        }
+    return text.commentPostErrorHint()
+}
+
+internal fun String.commentPostErrorHint(): CommentPostErrorHint {
+    val text = lowercase()
+    return when {
+        "rate limit" in text || "rate_limit" in text || "ratelimit" in text || "too many comments" in text ->
+            CommentPostErrorHint.RATE_LIMITED
+        "comment" in text && ("disabled" in text || "turned off" in text || "not allowed" in text) ->
+            CommentPostErrorHint.COMMENTS_DISABLED
+        "spam" in text -> CommentPostErrorHint.SPAM_BLOCK
+        else -> CommentPostErrorHint.UNKNOWN
+    }
+}
 
 /**
  * Entity payloads keyed by the key a `commentViewModel` points at.
@@ -38,6 +87,50 @@ internal fun JsonElement?.commentMutations(): Map<String, JsonElement?> =
             val key = objectValue["entityKey"].stringOrNull() ?: return@mapNotNull null
             key to objectValue["payload"]
         }.toMap()
+
+internal fun JsonElement?.findCommentSubmitParams(): String? = this?.findSubmitButtonParams()
+
+internal fun JsonElement?.findCommentReplyParams(): String? = this?.findFieldValue("createCommentParams")
+
+internal fun JsonElement?.toCreatedComment(ownVideoId: String): Comment? {
+    val mutations = commentMutations()
+
+    fun find(element: JsonElement): Comment? {
+        when (element) {
+            is JsonObject -> {
+                element.toModernComment(mutations, null, ownVideoId)?.let { return it }
+                element["commentRenderer"].objectOrNull()?.toLegacyComment(null)?.let { return it }
+                return element.values.firstNotNullOfOrNull(::find)
+            }
+
+            is JsonArray -> return element.firstNotNullOfOrNull(::find)
+            else -> return null
+        }
+    }
+
+    return this?.let(::find)
+}
+
+private fun JsonElement.findSubmitButtonParams(): String? {
+    val objectValue = this as? JsonObject
+    val submitButton = objectValue?.get("submitButton") ?: objectValue?.get("commentSubmitButton")
+    submitButton?.findFieldValue("createCommentParams")?.let { return it }
+    return when (this) {
+        is JsonObject -> values.firstNotNullOfOrNull { it.findSubmitButtonParams() }
+        is JsonArray -> firstNotNullOfOrNull { it.findSubmitButtonParams() }
+        else -> null
+    }
+}
+
+private fun JsonElement.findFieldValue(name: String): String? =
+    when (this) {
+        is JsonObject -> this[name].commentString() ?: values.firstNotNullOfOrNull { it.findFieldValue(name) }
+        is JsonArray -> firstNotNullOfOrNull { it.findFieldValue(name) }
+        else -> null
+    }
+
+private fun JsonElement?.commentString(): String? =
+    (this as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank)
 
 internal fun JsonObject.toModernComment(
     mutations: Map<String, JsonElement?>,
@@ -137,6 +230,7 @@ internal fun JsonObject.toModernComment(
                 .objectOrNull()
                 ?.get("imageAttachmentViewModel")
                 .toCommentImage(),
+        replyParams = repliesRenderer.findCommentReplyParams(),
     )
 }
 
@@ -190,6 +284,7 @@ internal fun JsonObject.toLegacyComment(repliesRenderer: JsonObject?): Comment? 
         replyCount = parseCount(this["replyCount"]),
         isPinned = this["pinnedCommentBadge"] != null,
         continuationToken = repliesRenderer?.findReplyContinuation(),
+        replyParams = repliesRenderer.findCommentReplyParams(),
         authorChannelId =
             this["authorEndpoint"]
                 .objectOrNull()

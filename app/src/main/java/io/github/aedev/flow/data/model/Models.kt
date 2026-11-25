@@ -107,6 +107,7 @@ data class Comment(
     /** Set when the creator answered somewhere in this comment's replies. */
     val creatorReplyThumbnail: String? = null,
     val creatorReplyName: String? = null,
+    val replyParams: String? = null,
 )
 
 /** A GIF or picture attached to a comment, with the size YouTube gives for it. */

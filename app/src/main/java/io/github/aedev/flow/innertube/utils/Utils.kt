@@ -69,8 +69,9 @@ fun sha1(str: String): String = MessageDigest.getInstance("SHA-1").digest(str.to
 
 fun parseCookieString(cookie: String): Map<String, String> =
     cookie
-        .split("; ")
-        .filter { it.isNotEmpty() }
+        .split(';')
+        .map(String::trim)
+        .filter(String::isNotEmpty)
         .mapNotNull { part ->
             val splitIndex = part.indexOf('=')
             if (splitIndex == -1) {

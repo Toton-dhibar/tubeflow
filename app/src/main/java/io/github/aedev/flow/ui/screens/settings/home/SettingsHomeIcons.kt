@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Public
@@ -37,6 +38,7 @@ internal fun destinationIcon(destination: SettingsDestination): ImageVector =
         SettingsDestination.HOME -> Icons.Outlined.Settings
         SettingsDestination.TASTE -> Icons.Outlined.Psychology
         SettingsDestination.APPEARANCE -> Icons.Outlined.Palette
+        SettingsDestination.YOUTUBE_ACCOUNT -> Icons.Outlined.Person
         SettingsDestination.LANGUAGE_REGION -> Icons.Outlined.Language
         SettingsDestination.PLAYBACK -> Icons.Outlined.PlayCircle
         SettingsDestination.QUALITY -> Icons.Outlined.HighQuality

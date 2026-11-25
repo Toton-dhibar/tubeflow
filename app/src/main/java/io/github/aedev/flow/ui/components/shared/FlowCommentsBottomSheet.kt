@@ -63,6 +63,9 @@ fun FlowCommentsBottomSheet(
     listState: LazyListState = rememberLazyListState(),
     threadState: CommentThreadState? = null,
     isDisabled: Boolean = false,
+    commentComposer: CommentComposerState? = null,
+    onPostComment: (String) -> Unit = {},
+    onPostReply: (Comment, String) -> Unit = { _, _ -> },
 ) {
     val sheetState = rememberFlowBottomSheetState()
     val tint = rememberMediaArtworkTint(artworkUrl)
@@ -110,6 +113,9 @@ fun FlowCommentsBottomSheet(
             timedFollow = timedFollow,
             threadState = threadState,
             isDisabled = isDisabled,
+            commentComposer = commentComposer,
+            onPostComment = onPostComment,
+            onPostReply = onPostReply,
             modifier =
                 Modifier
                     .fillMaxWidth()

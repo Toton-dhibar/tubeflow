@@ -1,0 +1,40 @@
+{
+  "onResponseReceivedEndpoints": [
+    {
+      "appendContinuationItemsAction": {
+        "continuationItems": [
+          {
+            "commentsHeaderRenderer": {
+              "commentSubmitButton": {
+                "buttonRenderer": {
+                  "serviceEndpoint": {
+                    "createCommentEndpoint": {
+                      "createCommentParams": "video-create-params"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "commentThreadRenderer": {
+              "replies": {
+                "commentRepliesRenderer": {
+                  "replyButton": {
+                    "buttonRenderer": {
+                      "serviceEndpoint": {
+                        "createCommentEndpoint": {
+                          "createCommentParams": "reply-create-params"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

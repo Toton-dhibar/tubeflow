@@ -20,6 +20,7 @@ enum class SettingsDestination(
     FAVOURITE_ARTISTS("favourite_artists", R.string.favourite_artists_title, TASTE),
     DISCOVER_CHANNELS("discover_channels", R.string.discover_channels_title, TASTE),
     APPEARANCE("appearance", R.string.appearance_title),
+    YOUTUBE_ACCOUNT("youtube_account", R.string.youtube_account_title),
     THEME("theme", R.string.settings_item_theme, APPEARANCE),
     FONT("font", R.string.settings_font_title, APPEARANCE),
     CUSTOM_THEME("custom_theme", R.string.settings_custom_themes_title, THEME),

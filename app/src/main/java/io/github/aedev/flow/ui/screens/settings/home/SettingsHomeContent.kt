@@ -119,6 +119,7 @@ internal fun SettingsListScope.homeContent(
         page(SettingsDestination.QUALITY)
         page(SettingsDestination.CONTENT)
         page(SettingsDestination.INTEGRATIONS)
+        page(SettingsDestination.YOUTUBE_ACCOUNT)
     }
     group(key = "home.data", header = R.string.settings_group_data) {
         page(SettingsDestination.PROFILES)

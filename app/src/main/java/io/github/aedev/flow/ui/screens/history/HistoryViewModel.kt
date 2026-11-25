@@ -7,6 +7,7 @@ import io.github.aedev.flow.data.engagement.HiddenContent
 import io.github.aedev.flow.data.engagement.HiddenContentStore
 import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.data.local.ViewHistory
+import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.local.dao.VideoDao
 import io.github.aedev.flow.data.local.dao.WatchHistoryDao
 import io.github.aedev.flow.data.local.entity.VideoEntity
@@ -19,6 +20,8 @@ import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.utils.PerformanceDispatcher
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -75,6 +78,7 @@ class HistoryViewModel
         private val shortsContentFilter: ShortsContentFilter,
         private val shortsQueueHandoff: ShortsQueueHandoff,
         hiddenContent: HiddenContentStore,
+        private val youTubeCookieAuth: YouTubeCookieAuth,
     ) : ViewModel() {
         private val isEnriching = AtomicBoolean(false)
         private val attemptedEnrichment = HashSet<String>()
@@ -82,6 +86,11 @@ class HistoryViewModel
 
         private val _uiState = MutableStateFlow(HistoryUiState())
         val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
+        val signedInAccount = youTubeCookieAuth.account
+        private val accountHistory = MutableStateFlow<List<VideoHistoryEntry>>(emptyList())
+        private var accountHistoryJob: Job? = null
+        private var loadedAccountHistoryFor: String? = null
+        private var accountHistoryAccountKey: String? = null
 
         private val _searchQuery = MutableStateFlow("")
         val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -96,9 +105,9 @@ class HistoryViewModel
         val yearFilter: StateFlow<Int?> = _yearFilter.asStateFlow()
 
         val availableYears: StateFlow<List<Int>> =
-            _uiState
-                .map { state ->
-                    state.historyEntries
+            combine(_uiState, accountHistory) { state, remote ->
+                    (state.historyEntries + remote)
+                        .filter { state.shortsEnabled || !it.isShort }
                         .map { historyYear(it.timestamp) }
                         .distinct()
                         .sortedDescending()
@@ -109,8 +118,13 @@ class HistoryViewModel
         val displayEntries: StateFlow<List<VideoHistoryEntry>> =
             combine(
                 _uiState
-                    .map { it.historyEntries }
+                    .map { it.historyEntries to it.shortsEnabled }
                     .distinctUntilChanged()
+                    .combine(accountHistory) { (local, shortsEnabled), remote ->
+                        (local + remote)
+                            .distinctBy { it.videoId }
+                            .filter { shortsEnabled || !it.isShort }
+                    }
                     .combine(hiddenContent.hidden) { entries, hidden -> entries.withoutHidden(hidden) },
                 _searchQuery,
                 _contentFilter,
@@ -187,6 +201,67 @@ class HistoryViewModel
 
         fun setSearchQuery(query: String) {
             _searchQuery.value = query
+        }
+
+        fun loadAccountHistory() {
+            val account = youTubeCookieAuth.account.value
+            if (account == null) {
+                accountHistoryJob?.cancel()
+                accountHistoryJob = null
+                accountHistory.value = emptyList()
+                loadedAccountHistoryFor = null
+                accountHistoryAccountKey = null
+                _uiState.update { it.copy(accountHistoryUnavailable = false, hasAccountHistory = false) }
+                return
+            }
+            val accountKey = account.channelHandle ?: account.email ?: account.name
+            if (accountHistoryAccountKey != accountKey) {
+                accountHistoryJob?.cancel()
+                accountHistoryJob = null
+                accountHistory.value = emptyList()
+                loadedAccountHistoryFor = null
+                accountHistoryAccountKey = accountKey
+                _uiState.update { it.copy(accountHistoryUnavailable = false, hasAccountHistory = false) }
+            }
+            if (loadedAccountHistoryFor == accountKey || accountHistoryJob?.isActive == true) return
+            accountHistoryJob =
+                viewModelScope.launch {
+                    try {
+                        val page = youTubeRepository.getSignedInWatchHistory()
+                        val activeAccountKey =
+                            youTubeCookieAuth.account.value?.let { it.channelHandle ?: it.email ?: it.name }
+                        if (activeAccountKey == accountKey) {
+                            val fetchedAt = System.currentTimeMillis()
+                            accountHistory.value =
+                                page.videos.map { video ->
+                                    VideoHistoryEntry(
+                                        videoId = video.id,
+                                        position = 0L,
+                                        duration = video.duration.toLong(),
+                                        timestamp = video.timestamp.takeIf { it > 0L } ?: fetchedAt,
+                                        title = video.title,
+                                        thumbnailUrl = video.thumbnailUrl,
+                                        channelName = video.channelName,
+                                        channelId = video.channelId,
+                                        isMusic = video.isMusic,
+                                        isShort = video.isShort,
+                                        isAccountHistory = true,
+                                    )
+                                }
+                            loadedAccountHistoryFor = accountKey
+                            _uiState.update {
+                                it.copy(
+                                    accountHistoryUnavailable = false,
+                                    hasAccountHistory = page.videos.isNotEmpty(),
+                                )
+                            }
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        _uiState.update { it.copy(accountHistoryUnavailable = true) }
+                    }
+                }
         }
 
         fun setContentFilter(filter: HistoryContentFilter) {
@@ -352,6 +427,8 @@ data class HistoryUiState(
     val shortVideos: Map<String, Video> = emptyMap(),
     val isLoading: Boolean = false,
     val shortsEnabled: Boolean = true,
+    val accountHistoryUnavailable: Boolean = false,
+    val hasAccountHistory: Boolean = false,
 )
 
 /** History without what the viewer marked "Not interested" or blocked since the screen loaded it. */

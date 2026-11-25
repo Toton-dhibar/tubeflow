@@ -12,8 +12,8 @@ import io.github.aedev.flow.innertube.models.body.*
 import io.github.aedev.flow.innertube.models.normalizeYouTubeHostLanguage
 import io.github.aedev.flow.innertube.models.response.NextResponse
 import io.github.aedev.flow.innertube.models.response.PlayerResponse
-import io.github.aedev.flow.innertube.utils.parseCookieString
-import io.github.aedev.flow.innertube.utils.sha1
+import io.github.aedev.flow.innertube.utils.CommentRequestBuilder
+import io.github.aedev.flow.innertube.utils.YouTubeCookieAuthHeaders
 import io.github.aedev.flow.network.FlowRequestLog
 import io.github.aedev.flow.network.SharedConnectionPool
 import io.ktor.client.*
@@ -30,6 +30,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToJsonElement
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -79,11 +80,6 @@ class InnerTube {
     var onVisitorDataChanged: ((String?) -> Unit)? = null
     var dataSyncId: String? = null
     var cookie: String? = null
-        set(value) {
-            field = value
-            cookieMap = if (value == null) emptyMap() else parseCookieString(value)
-        }
-    private var cookieMap = emptyMap<String, String>()
 
     var proxy: Proxy? = null
         set(value) {
@@ -262,13 +258,11 @@ class InnerTube {
             append("Referer", referer)
             visitorData?.let { append("X-Goog-Visitor-Id", it) }
             if (setLogin && client.loginSupported) {
-                cookie?.let { cookie ->
-                    append("cookie", cookie)
-                    if ("SAPISID" !in cookieMap) return@let
-                    val currentTime = System.currentTimeMillis() / 1000
-                    val sapisidHash = sha1("$currentTime ${cookieMap["SAPISID"]} $origin")
-                    append("Authorization", "SAPISIDHASH ${currentTime}_$sapisidHash")
-                }
+                YouTubeCookieAuthHeaders
+                    .build(cookie, origin, System.currentTimeMillis() / 1000)
+                    .forEach { (name, value) ->
+                        if (name != "X-Origin") append(name, value)
+                    }
             }
         }
         userAgent(client.userAgent)
@@ -726,6 +720,13 @@ class InnerTube {
             append("X-Origin", "https://www.youtube.com")
             append("Referer", "https://www.youtube.com/")
             visitor?.let { append("X-Goog-Visitor-Id", it) }
+            if (client.loginSupported) {
+                YouTubeCookieAuthHeaders
+                    .build(cookie, YouTubeClient.ORIGIN_YOUTUBE, System.currentTimeMillis() / 1000)
+                    .forEach { (name, value) ->
+                        if (name != "X-Origin") append(name, value)
+                    }
+            }
         }
         contentType(ContentType.Application.Json)
         userAgent(client.userAgent)
@@ -922,6 +923,22 @@ class InnerTube {
             ytClient(client, setLogin = true)
             setBody(AccountMenuBody(client.toContext(locale, visitorData, dataSyncId)))
         }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    suspend fun createComment(
+        createCommentParams: String,
+        commentText: String,
+    ) = httpClient.post("${YouTubeClient.API_URL_YOUTUBE}comment/create_comment") {
+        expectSuccess = false
+        val client = YouTubeClient.WEB
+        ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+        val context =
+            Json {
+                explicitNulls = false
+                encodeDefaults = true
+            }.encodeToJsonElement(client.toContext(locale, visitorData, dataSyncId))
+        setBody(CommentRequestBuilder.build(context, createCommentParams, commentText))
+    }
 
     suspend fun likeVideo(
         client: YouTubeClient,

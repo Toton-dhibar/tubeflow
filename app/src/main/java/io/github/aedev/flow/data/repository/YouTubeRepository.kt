@@ -2,7 +2,9 @@ package io.github.aedev.flow.data.repository
 
 import android.util.Log
 import android.util.LruCache
+import io.github.aedev.flow.data.comments.CommentPostResult
 import io.github.aedev.flow.data.comments.CommentsPageResult
+import io.github.aedev.flow.data.comments.toCommentPostFailure
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.model.Comment
 import io.github.aedev.flow.data.model.Video
@@ -21,6 +23,7 @@ import io.github.aedev.flow.innertube.pages.VideoDescriptionPage
 import io.github.aedev.flow.innertube.pages.WatchPageHeader
 import io.github.aedev.flow.innertube.pages.WatchPlaylistWindow
 import io.github.aedev.flow.innertube.pages.YouTubeCountParser
+import io.github.aedev.flow.innertube.pages.renderer.AccountVideoFeedPage
 import io.github.aedev.flow.innertube.pages.channel.ChannelHeader
 import io.github.aedev.flow.innertube.pages.parseYouTubeViewCount
 import io.github.aedev.flow.innertube.pages.search.resultVideos
@@ -623,6 +626,7 @@ class YouTubeRepository
                     sortOptions = page.sortOptions.ifEmpty { panel?.sortOptions.orEmpty() },
                     totalText = page.totalText ?: panel?.totalText,
                     totalCount = page.totalCount ?: panel?.totalCount,
+                    createCommentParams = page.createCommentParams,
                 )
             }
 
@@ -656,6 +660,30 @@ class YouTubeRepository
             withContext(Dispatchers.IO) {
                 val page = YouTube.commentReplies(continuation, videoId).getOrNull() ?: return@withContext CommentsPageResult.EMPTY
                 CommentsPageResult(comments = page.comments, continuation = page.continuation)
+            }
+
+        suspend fun postVideoComment(
+            videoId: String,
+            createCommentParams: String,
+            commentText: String,
+        ): CommentPostResult =
+            withContext(Dispatchers.IO) {
+                YouTube
+                    .createComment(createCommentParams, commentText, videoId)
+                    .fold(
+                        onSuccess = { CommentPostResult.Posted(it) },
+                        onFailure = { CommentPostResult.Failed(it.toCommentPostFailure()) },
+                    )
+            }
+
+        suspend fun getSignedInSubscriptions(continuation: String? = null): AccountVideoFeedPage =
+            withContext(Dispatchers.IO) {
+                YouTube.accountVideoFeed("FEsubscriptions", continuation).getOrThrow()
+            }
+
+        suspend fun getSignedInWatchHistory(continuation: String? = null): AccountVideoFeedPage =
+            withContext(Dispatchers.IO) {
+                YouTube.accountVideoFeed("FEhistory", continuation).getOrThrow()
             }
 
         /** Like and dislike counts from the Return YouTube Dislike archive. */

@@ -351,6 +351,9 @@ internal fun PlayerCommentsPanelHost(
         listState = screenState.commentsListState,
         threadState = screenState.commentThreads,
         isDisabled = commentsUiState.isDisabled,
+        commentComposer = commentsUiState.commentComposer,
+        onPostComment = viewModel::postComment,
+        onPostReply = viewModel::postCommentReply,
     )
 }
 

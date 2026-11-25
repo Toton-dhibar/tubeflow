@@ -13,6 +13,7 @@ import io.github.aedev.flow.applock.AppLock
 import io.github.aedev.flow.data.contentfilter.aislist.AiListRepository
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.local.SubscriptionRepository
+import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.music.MusicCache
 import io.github.aedev.flow.data.profile.ActiveProfile
 import io.github.aedev.flow.data.profile.PendingSlice
@@ -79,6 +80,9 @@ class FlowApplication :
 
     @Inject
     lateinit var playlistRepository: YouTubePlaylistRepository
+
+    @Inject
+    lateinit var youTubeCookieAuth: YouTubeCookieAuth
 
     @Inject
     lateinit var vpnStateMonitor: VpnStateMonitor
@@ -151,6 +155,13 @@ class FlowApplication :
         dailyLimitGuard.install()
         appLock.install()
         YouTube.cacheDirectory = cacheDir.resolve("innertube_http_cache")
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                youTubeCookieAuth.restore()
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not restore the saved YouTube session", error)
+            }
+        }
 
         DiscordPresenceRuntime.initialize(this, okHttpClient)
 

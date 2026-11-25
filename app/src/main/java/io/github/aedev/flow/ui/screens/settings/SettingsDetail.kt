@@ -5,6 +5,7 @@ import io.github.aedev.flow.ui.components.settings.SettingsDestination
 import io.github.aedev.flow.ui.components.settings.SettingsTarget
 import io.github.aedev.flow.ui.screens.equalizer.EqualizerScreen
 import io.github.aedev.flow.ui.screens.settings.about.AboutScreen
+import io.github.aedev.flow.ui.screens.settings.account.YouTubeAccountScreen
 import io.github.aedev.flow.ui.screens.settings.appearance.AppearanceScreen
 import io.github.aedev.flow.ui.screens.settings.appearance.DateTimeScreen
 import io.github.aedev.flow.ui.screens.settings.appearance.FontScreen
@@ -174,6 +175,10 @@ internal fun SettingsDetail(
 
         SettingsDestination.HISTORY -> {
             HistorySettingsScreen(onBack = onBack, highlight = target.highlight)
+        }
+
+        SettingsDestination.YOUTUBE_ACCOUNT -> {
+            YouTubeAccountScreen(onBack = onBack, highlight = target.highlight)
         }
 
         SettingsDestination.DOWNLOADS -> {

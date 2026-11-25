@@ -13,12 +13,16 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import io.github.aedev.flow.R
 import io.github.aedev.flow.data.local.HomeFeedColumns
 import io.github.aedev.flow.data.model.Channel
 import io.github.aedev.flow.data.model.Video
@@ -125,6 +129,15 @@ internal fun SubscriptionsFeedContent(
                                     vertical = ErrorCardPadding,
                                 ),
                         )
+
+                        if (state.accountFeedUnavailable) {
+                            Text(
+                                text = stringResource(R.string.account_subscription_feed_unavailable),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
 
                         SubscriptionsRefreshStatus(
                             stage = state.refreshStage,

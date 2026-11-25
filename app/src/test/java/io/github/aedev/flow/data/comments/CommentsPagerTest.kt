@@ -86,6 +86,50 @@ class CommentsPagerTest {
         }
 
     @Test
+    fun `successful comment is inserted at the top without another comments fetch`() =
+        runTest(testDispatcher) {
+            val scope = CoroutineScope(testDispatcher)
+            coEvery { repository.getVideoComments("vid_a", null) } returns
+                CommentsPageResult(
+                    comments = listOf(comment("existing")),
+                    createCommentParams = "video-params",
+                )
+            coEvery { repository.postVideoComment("vid_a", "video-params", "new comment") } returns
+                CommentPostResult.Posted(comment("created"))
+            val pager = pager(scope)
+
+            pager.load("vid_a")
+            advanceUntilIdle()
+            pager.postComment("vid_a", "new comment")
+            advanceUntilIdle()
+
+            assertThat(pager.comments.value.map { it.id }).containsExactly("created", "existing").inOrder()
+            assertThat(pager.postState.value.successVersion).isEqualTo(1)
+            coVerify(exactly = 1) { repository.getVideoComments("vid_a", null) }
+            scope.cancel()
+        }
+
+    @Test
+    fun `rate limited comment keeps cooldown state`() =
+        runTest(testDispatcher) {
+            val scope = CoroutineScope(testDispatcher)
+            coEvery { repository.getVideoComments("vid_a", null) } returns
+                CommentsPageResult(createCommentParams = "video-params")
+            coEvery { repository.postVideoComment("vid_a", "video-params", "comment") } returns
+                CommentPostResult.Failed(CommentPostFailure.RATE_LIMITED)
+            val pager = pager(scope)
+
+            pager.load("vid_a")
+            advanceUntilIdle()
+            pager.postComment("vid_a", "comment")
+            runCurrent()
+
+            assertThat(pager.postState.value.failure).isEqualTo(CommentPostFailure.RATE_LIMITED)
+            assertThat(pager.postState.value.isCoolingDown).isTrue()
+            scope.cancel()
+        }
+
+    @Test
     fun `the header count and the sort menu are published from the first page`() =
         runTest(testDispatcher) {
             val scope = CoroutineScope(testDispatcher)

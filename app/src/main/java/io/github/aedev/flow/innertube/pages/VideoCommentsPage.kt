@@ -22,6 +22,7 @@ data class VideoCommentsPage(
     val sortOptions: List<VideoCommentSort> = emptyList(),
     val totalText: String? = null,
     val totalCount: Long? = null,
+    val createCommentParams: String? = null,
 )
 
 /** The sort menu and count a `next` response carries in its comments panel. */
@@ -196,6 +197,7 @@ internal fun JsonElement.toVideoCommentsPage(ownVideoId: String?): VideoComments
                 .youtubeText()
                 ?.let(::parseYouTubeViewCount)
                 ?.takeIf { it > 0L },
+        createCommentParams = findCommentSubmitParams(),
     )
 }
 

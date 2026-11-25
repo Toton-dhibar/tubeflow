@@ -1,0 +1,30 @@
+{
+  "frameworkUpdates": {
+    "entityBatchUpdate": {
+      "mutations": [
+        {
+          "entityKey": "created-comment-key",
+          "payload": {
+            "commentEntityPayload": {
+              "properties": {
+                "commentId": "created-comment-id",
+                "content": {
+                  "content": "Fixture comment"
+                },
+                "publishedTime": "just now"
+              },
+              "author": {
+                "displayName": "Fixture author",
+                "avatarThumbnailUrl": "https://example.invalid/avatar.jpg",
+                "channelId": "fixture-channel"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "commentViewModel": {
+    "commentKey": "created-comment-key"
+  }
+}

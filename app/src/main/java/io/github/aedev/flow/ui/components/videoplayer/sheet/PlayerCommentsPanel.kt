@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.Comment
 import io.github.aedev.flow.innertube.pages.VideoCommentSort
+import io.github.aedev.flow.ui.components.shared.CommentComposerState
 import io.github.aedev.flow.ui.components.shared.CommentSortChips
 import io.github.aedev.flow.ui.components.shared.CommentSortFilter
 import io.github.aedev.flow.ui.components.shared.CommentThreadState
@@ -60,6 +61,9 @@ fun PlayerCommentsPanel(
     listState: LazyListState = rememberLazyListState(),
     threadState: CommentThreadState? = null,
     isDisabled: Boolean = false,
+    commentComposer: CommentComposerState? = null,
+    onPostComment: (String) -> Unit = {},
+    onPostReply: (Comment, String) -> Unit = { _, _ -> },
 ) {
     val tint = rememberMediaArtworkTint(artworkUrl)
 
@@ -121,6 +125,9 @@ fun PlayerCommentsPanel(
             timedFollow = timedFollow,
             threadState = threadState,
             isDisabled = isDisabled,
+            commentComposer = commentComposer,
+            onPostComment = onPostComment,
+            onPostReply = onPostReply,
             modifier = Modifier.fillMaxWidth().weight(1f),
         )
     }

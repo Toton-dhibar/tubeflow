@@ -49,6 +49,7 @@ import io.github.aedev.flow.innertube.models.response.ResolveUrlResponse
 import io.github.aedev.flow.innertube.models.response.SearchResponse
 import io.github.aedev.flow.innertube.models.response.channelVideoCountText
 import io.github.aedev.flow.innertube.pages.AlbumPage
+import io.github.aedev.flow.innertube.pages.renderer.AccountVideoFeedPage
 import io.github.aedev.flow.innertube.pages.ArtistItemsContinuationPage
 import io.github.aedev.flow.innertube.pages.ArtistItemsPage
 import io.github.aedev.flow.innertube.pages.ArtistPage
@@ -118,12 +119,17 @@ import io.github.aedev.flow.innertube.pages.renderer.collaboratorDialog
 import io.github.aedev.flow.innertube.pages.renderer.lockupDateAndViews
 import io.github.aedev.flow.innertube.pages.renderer.toCommunityCommentsPage
 import io.github.aedev.flow.innertube.pages.renderer.toCommunityPostsPage
+import io.github.aedev.flow.innertube.pages.renderer.toAccountVideoFeedPage
+import io.github.aedev.flow.innertube.pages.CommentPostErrorHint
+import io.github.aedev.flow.innertube.pages.CommentPostResponseException
+import io.github.aedev.flow.innertube.pages.commentPostErrorHint
 import io.github.aedev.flow.innertube.pages.search.SearchResultsPage
 import io.github.aedev.flow.innertube.pages.search.SearchSuggestion
 import io.github.aedev.flow.innertube.pages.search.parseSearchSuggestions
 import io.github.aedev.flow.innertube.pages.search.toSearchResultsPage
 import io.github.aedev.flow.innertube.pages.timedLyricLines
 import io.github.aedev.flow.innertube.pages.toCommentRepliesPage
+import io.github.aedev.flow.innertube.pages.toCreatedComment
 import io.github.aedev.flow.innertube.pages.toLiveMetadataUpdate
 import io.github.aedev.flow.innertube.pages.toMixPlaylistPage
 import io.github.aedev.flow.innertube.pages.toTimedComments
@@ -138,6 +144,7 @@ import io.github.aedev.flow.utils.avatarImageIdentityKey
 import io.github.aedev.flow.utils.relativedate.RelativeUploadDateParser
 import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -1967,6 +1974,22 @@ object YouTube {
             )
         }
 
+    suspend fun accountVideoFeed(
+        browseId: String,
+        continuation: String? = null,
+    ): Result<AccountVideoFeedPage> =
+        runCatching {
+            check(!cookie.isNullOrBlank()) { "Signed-in cookies are required for account feeds" }
+            innerTube
+                .browse(
+                    client = WEB,
+                    browseId = browseId.takeUnless { continuation != null },
+                    continuation = continuation,
+                    setLogin = true,
+                ).body<JsonElement>()
+                .toAccountVideoFeedPage()
+        }
+
     suspend fun getChartsPage(
         country: String? = null,
         continuation: String? = null,
@@ -2283,6 +2306,38 @@ object YouTube {
             Json
                 .parseToJsonElement(innerTube.nextWatch(continuation = continuation).bodyAsText())
                 .toCommentRepliesPage(ownVideoId)
+        }
+
+    suspend fun createComment(
+        createCommentParams: String,
+        commentText: String,
+        ownVideoId: String,
+    ): Result<Comment> =
+        try {
+            val httpResponse = innerTube.createComment(createCommentParams, commentText)
+            val response = httpResponse.bodyAsText()
+            val responseJson = runCatching { Json.parseToJsonElement(response) }.getOrNull()
+            val responseStatus = httpResponse.status.value
+            if (!httpResponse.status.isSuccess()) {
+                throw CommentPostResponseException(
+                    responseStatus,
+                    responseJson?.commentPostErrorHint() ?: response.commentPostErrorHint(),
+                )
+            }
+            val comment =
+                responseJson?.toCreatedComment(ownVideoId)
+                    ?: run {
+                        val hint = responseJson?.commentPostErrorHint() ?: response.commentPostErrorHint()
+                        if (hint != CommentPostErrorHint.UNKNOWN) {
+                            throw CommentPostResponseException(responseStatus, hint)
+                        }
+                        error("YouTube returned no created comment")
+                    }
+            Result.success(comment)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(error)
         }
 
     suspend fun liveChat(

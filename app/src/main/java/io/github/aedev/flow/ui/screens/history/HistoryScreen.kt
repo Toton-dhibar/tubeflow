@@ -22,6 +22,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +68,7 @@ fun HistoryScreen(
     val contentFilter by viewModel.contentFilter.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val yearFilter by viewModel.yearFilter.collectAsStateWithLifecycle()
+    val signedInAccount by viewModel.signedInAccount.collectAsStateWithLifecycle()
 
     var showClearDialog by remember { mutableStateOf(false) }
     var showClearShortsDialog by remember { mutableStateOf(false) }
@@ -75,16 +77,22 @@ fun HistoryScreen(
 
     val removedLabel = stringResource(R.string.removed_from_history)
     val undoLabel = stringResource(R.string.action_undo)
+    val accountEntryReadOnly = stringResource(R.string.history_account_entry_read_only)
+    LaunchedEffect(signedInAccount) { viewModel.loadAccountHistory() }
     val onRemove: (VideoHistoryEntry) -> Unit = { entry ->
-        viewModel.removeFromHistory(entry.videoId)
-        scope.launch {
-            val result =
-                snackbarHostState.showSnackbar(
-                    message = removedLabel,
-                    actionLabel = undoLabel,
-                )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.restoreHistoryEntry(entry)
+        if (entry.isAccountHistory) {
+            scope.launch { snackbarHostState.showSnackbar(accountEntryReadOnly) }
+        } else {
+            viewModel.removeFromHistory(entry.videoId)
+            scope.launch {
+                val result =
+                    snackbarHostState.showSnackbar(
+                        message = removedLabel,
+                        actionLabel = undoLabel,
+                    )
+                if (result == SnackbarResult.ActionPerformed) {
+                    viewModel.restoreHistoryEntry(entry)
+                }
             }
         }
     }
@@ -148,6 +156,19 @@ fun HistoryScreen(
                 },
             )
 
+            if (uiState.accountHistoryUnavailable) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Text(
+                        text = stringResource(R.string.account_history_unavailable),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    TextButton(onClick = viewModel::loadAccountHistory) {
+                        Text(stringResource(R.string.retry))
+                    }
+                }
+            }
+
             HistoryFilterRow(
                 shortsEnabled = uiState.shortsEnabled,
                 selectedFilter = contentFilter,
@@ -173,13 +194,13 @@ fun HistoryScreen(
                     FlowEmptyState(
                         modifier = Modifier.fillMaxSize(),
                         title =
-                            if (uiState.historyEntries.isEmpty()) {
+                            if (uiState.historyEntries.isEmpty() && !uiState.hasAccountHistory) {
                                 stringResource(R.string.empty_watch_history)
                             } else {
                                 stringResource(R.string.history_no_results)
                             },
                         subtitle =
-                            if (uiState.historyEntries.isEmpty()) {
+                            if (uiState.historyEntries.isEmpty() && !uiState.hasAccountHistory) {
                                 stringResource(R.string.empty_watch_history_body)
                             } else {
                                 stringResource(R.string.history_no_results_body)

@@ -56,6 +56,9 @@ fun FlowCommentsList(
     timedFollow: CommentsTimedFollow? = null,
     threadState: CommentThreadState? = null,
     isDisabled: Boolean = false,
+    commentComposer: CommentComposerState? = null,
+    onPostComment: (String) -> Unit = {},
+    onPostReply: (Comment, String) -> Unit = { _, _ -> },
 ) {
     val threads = threadState ?: rememberCommentThreadState(selectedFilter)
     val latestOnLoadMore by rememberUpdatedState(onLoadMore)
@@ -104,6 +107,16 @@ fun FlowCommentsList(
         modifier = modifier,
         contentPadding = contentPadding,
     ) {
+        if (commentComposer != null && !isDisabled) {
+            item(key = "comment_composer") {
+                CommentComposer(
+                    state = commentComposer,
+                    target = VIDEO_COMMENT_TARGET,
+                    canSubmit = commentComposer.canPostComment,
+                    onSubmit = onPostComment,
+                )
+            }
+        }
         if (isLoading) {
             item(key = "loading") {
                 Column(Modifier.padding(16.dp)) {
@@ -138,21 +151,26 @@ fun FlowCommentsList(
                 key = { _, comment -> "${selectedFilter.name}_${comment.id}" },
             ) { index, comment ->
                 TimedCommentBackdrop(highlighted = following && index == 0) {
-                    FlowCommentItem(
-                        comment = comment,
-                        tint = tint,
-                        onSeekMs = seekAndResume,
-                        onLoadReplies = loadRepliesAndPause,
-                        onLoadMoreReplies = onLoadMoreReplies,
-                        onAuthorClick = onAuthorClick,
-                        onAvatarClick = onAvatarClick,
-                        isRepliesVisible = threads.isRepliesOpen(comment.id),
-                        onToggleReplies = { threads.toggleReplies(comment.id) },
-                        isExpanded = threads.isTextExpanded(comment.id),
-                        onExpand = { threads.expandText(comment.id) },
-                        isUnfolded = { threads.isUnfolded(it) },
-                        onUnfold = { threads.unfold(it) },
-                    )
+                    Column {
+                        FlowCommentItem(
+                            comment = comment,
+                            tint = tint,
+                            onSeekMs = seekAndResume,
+                            onLoadReplies = loadRepliesAndPause,
+                            onLoadMoreReplies = onLoadMoreReplies,
+                            onAuthorClick = onAuthorClick,
+                            onAvatarClick = onAvatarClick,
+                            isRepliesVisible = threads.isRepliesOpen(comment.id),
+                            onToggleReplies = { threads.toggleReplies(comment.id) },
+                            isExpanded = threads.isTextExpanded(comment.id),
+                            onExpand = { threads.expandText(comment.id) },
+                            isUnfolded = { threads.isUnfolded(it) },
+                            onUnfold = { threads.unfold(it) },
+                        )
+                        commentComposer?.let { composer ->
+                            CommentReplyComposer(composer, comment, onPostReply)
+                        }
+                    }
                 }
             }
             if (following) {
@@ -190,6 +208,8 @@ fun FlowCommentsList(
         }
     }
 }
+
+private const val VIDEO_COMMENT_TARGET = "video"
 
 @Composable
 private fun CommentsLoadingMoreRow() {
