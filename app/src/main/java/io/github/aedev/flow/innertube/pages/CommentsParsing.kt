@@ -38,7 +38,7 @@ internal fun JsonElement.commentPostErrorHint(): CommentPostErrorHint {
         buildString {
             fun appendStrings(element: JsonElement) {
                 when (element) {
-                    is JsonObject ->
+                    is JsonObject -> {
                         element.forEach { (key, value) ->
                             if (key in COMMENT_ERROR_TEXT_KEYS && value is JsonPrimitive) {
                                 value.contentOrNull?.let { append(it.lowercase()).append(' ') }
@@ -46,8 +46,15 @@ internal fun JsonElement.commentPostErrorHint(): CommentPostErrorHint {
                                 appendStrings(value)
                             }
                         }
-                    is JsonArray -> element.forEach(::appendStrings)
-                    else -> Unit
+                    }
+
+                    is JsonArray -> {
+                        element.forEach(::appendStrings)
+                    }
+
+                    else -> {
+                        Unit
+                    }
                 }
             }
             appendStrings(this@commentPostErrorHint)
@@ -58,12 +65,21 @@ internal fun JsonElement.commentPostErrorHint(): CommentPostErrorHint {
 internal fun String.commentPostErrorHint(): CommentPostErrorHint {
     val text = lowercase()
     return when {
-        "rate limit" in text || "rate_limit" in text || "ratelimit" in text || "too many comments" in text ->
+        "rate limit" in text || "rate_limit" in text || "ratelimit" in text || "too many comments" in text -> {
             CommentPostErrorHint.RATE_LIMITED
-        "comment" in text && ("disabled" in text || "turned off" in text || "not allowed" in text) ->
+        }
+
+        "comment" in text && ("disabled" in text || "turned off" in text || "not allowed" in text) -> {
             CommentPostErrorHint.COMMENTS_DISABLED
-        "spam" in text -> CommentPostErrorHint.SPAM_BLOCK
-        else -> CommentPostErrorHint.UNKNOWN
+        }
+
+        "spam" in text -> {
+            CommentPostErrorHint.SPAM_BLOCK
+        }
+
+        else -> {
+            CommentPostErrorHint.UNKNOWN
+        }
     }
 }
 
@@ -103,8 +119,13 @@ internal fun JsonElement?.toCreatedComment(ownVideoId: String): Comment? {
                 return element.values.firstNotNullOfOrNull(::find)
             }
 
-            is JsonArray -> return element.firstNotNullOfOrNull(::find)
-            else -> return null
+            is JsonArray -> {
+                return element.firstNotNullOfOrNull(::find)
+            }
+
+            else -> {
+                return null
+            }
         }
     }
 
@@ -129,8 +150,7 @@ private fun JsonElement.findFieldValue(name: String): String? =
         else -> null
     }
 
-private fun JsonElement?.commentString(): String? =
-    (this as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank)
+private fun JsonElement?.commentString(): String? = (this as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank)
 
 internal fun JsonObject.toModernComment(
     mutations: Map<String, JsonElement?>,

@@ -19,8 +19,8 @@ import io.github.aedev.flow.data.shorts.queue.ShortsQueueHandoff
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.utils.PerformanceDispatcher
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,12 +106,12 @@ class HistoryViewModel
 
         val availableYears: StateFlow<List<Int>> =
             combine(_uiState, accountHistory) { state, remote ->
-                    (state.historyEntries + remote)
-                        .filter { state.shortsEnabled || !it.isShort }
-                        .map { historyYear(it.timestamp) }
-                        .distinct()
-                        .sortedDescending()
-                }.distinctUntilChanged()
+                (state.historyEntries + remote)
+                    .filter { state.shortsEnabled || !it.isShort }
+                    .map { historyYear(it.timestamp) }
+                    .distinct()
+                    .sortedDescending()
+            }.distinctUntilChanged()
                 .flowOn(Dispatchers.Default)
                 .stateIn(viewModelScope, sharing, emptyList())
 
@@ -124,8 +124,7 @@ class HistoryViewModel
                         (local + remote)
                             .distinctBy { it.videoId }
                             .filter { shortsEnabled || !it.isShort }
-                    }
-                    .combine(hiddenContent.hidden) { entries, hidden -> entries.withoutHidden(hidden) },
+                    }.combine(hiddenContent.hidden) { entries, hidden -> entries.withoutHidden(hidden) },
                 _searchQuery,
                 _contentFilter,
                 _sortOrder,

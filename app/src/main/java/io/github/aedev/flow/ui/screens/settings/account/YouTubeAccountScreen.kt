@@ -208,12 +208,18 @@ private fun YouTubeAccountProfile(account: AccountInfo) {
 private fun CookieImportFailure.stringResource(): Int =
     when (this) {
         CookieImportFailure.EMPTY -> R.string.youtube_account_error_empty
+
         CookieImportFailure.INVALID_FORMAT -> R.string.youtube_account_error_format
+
         CookieImportFailure.MISSING_REQUIRED_COOKIES -> R.string.youtube_account_error_missing_cookies
+
         CookieImportFailure.REQUIRED_COOKIE_EXPIRED,
         CookieImportFailure.COOKIES_EXPIRED,
         -> R.string.youtube_account_error_expired
+
         CookieImportFailure.NETWORK -> R.string.youtube_account_error_network
+
         CookieImportFailure.STORAGE -> R.string.youtube_account_error_storage
+
         CookieImportFailure.FILE_READ -> R.string.youtube_account_error_file
     }

@@ -4,12 +4,12 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.data.local.CookieImportFailure
 import io.github.aedev.flow.data.local.CookieImportResult
 import io.github.aedev.flow.data.local.YouTubeCookieAuth
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,7 +56,10 @@ internal class YouTubeAccountViewModel
                 val input =
                     try {
                         withContext(Dispatchers.IO) {
-                            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                            context.contentResolver
+                                .openInputStream(uri)
+                                ?.bufferedReader()
+                                ?.use { it.readText() }
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled

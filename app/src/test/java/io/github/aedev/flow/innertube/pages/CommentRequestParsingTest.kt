@@ -13,9 +13,11 @@ class CommentRequestParsingTest {
         val response = fixture("next_response.json")
         val replyRenderer =
             response.jsonObject["onResponseReceivedEndpoints"]!!
-                .jsonArray[0].jsonObject["appendContinuationItemsAction"]!!
+                .jsonArray[0]
+                .jsonObject["appendContinuationItemsAction"]!!
                 .jsonObject["continuationItems"]!!
-                .jsonArray[1].jsonObject["commentThreadRenderer"]!!
+                .jsonArray[1]
+                .jsonObject["commentThreadRenderer"]!!
                 .jsonObject["replies"]!!
                 .jsonObject["commentRepliesRenderer"]
 

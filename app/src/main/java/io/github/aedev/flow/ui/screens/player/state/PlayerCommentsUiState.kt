@@ -8,8 +8,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.aedev.flow.data.comments.CommentPostUiState
 import io.github.aedev.flow.data.model.Comment
 import io.github.aedev.flow.innertube.pages.VideoCommentSort
-import io.github.aedev.flow.ui.components.shared.CommentSortFilter
 import io.github.aedev.flow.ui.components.shared.CommentComposerState
+import io.github.aedev.flow.ui.components.shared.CommentSortFilter
 import io.github.aedev.flow.ui.components.shared.CommentsTimedFollow
 import io.github.aedev.flow.ui.components.shared.applyVideoCommentFilters
 import io.github.aedev.flow.ui.components.shared.timedCommentMarks

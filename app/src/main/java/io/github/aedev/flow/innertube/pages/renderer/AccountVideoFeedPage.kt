@@ -27,7 +27,9 @@ internal fun JsonElement.toAccountVideoFeedPage(): AccountVideoFeedPage {
                 return
             }
 
-            else -> Unit
+            else -> {
+                Unit
+            }
         }
         when (element) {
             is JsonObject -> element.values.forEach(::collect)
@@ -48,8 +50,13 @@ internal fun JsonElement.toAccountVideoFeedPage(): AccountVideoFeedPage {
                 element.values.firstNotNullOfOrNull(::continuation)?.let { return it }
             }
 
-            is JsonArray -> element.firstNotNullOfOrNull(::continuation)?.let { return it }
-            else -> Unit
+            is JsonArray -> {
+                element.firstNotNullOfOrNull(::continuation)?.let { return it }
+            }
+
+            else -> {
+                Unit
+            }
         }
         return null
     }

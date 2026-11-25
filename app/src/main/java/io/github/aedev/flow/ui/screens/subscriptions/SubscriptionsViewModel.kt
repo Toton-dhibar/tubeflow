@@ -16,8 +16,8 @@ import io.github.aedev.flow.data.local.dao.WatchHistoryDao
 import io.github.aedev.flow.data.model.Channel
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.model.toUiModel
-import io.github.aedev.flow.data.repository.YouTubeRepository
 import io.github.aedev.flow.data.recommendation.FlowNeuroEngine
+import io.github.aedev.flow.data.repository.YouTubeRepository
 import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRepository
 import io.github.aedev.flow.data.subscriptions.SubscriptionRefreshPlan
 import io.github.aedev.flow.data.subscriptions.SubscriptionWatchedVideos
@@ -28,8 +28,8 @@ import io.github.aedev.flow.data.subscriptions.withPlayerMetadata
 import io.github.aedev.flow.utils.PerformanceDispatcher
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import io.github.aedev.flow.utils.formatYouTubeRelativeTime
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -155,26 +155,26 @@ class SubscriptionsViewModel
             }
 
             viewModelScope.launch {
-                    youTubeCookieAuth.account.collectLatest { account ->
-                        if (account == null) {
+                youTubeCookieAuth.account.collectLatest { account ->
+                    if (account == null) {
+                        accountFeedJob?.cancel()
+                        accountFeedAccountKey = null
+                        accountFeedVideos = emptyList()
+                        _uiState.update { it.copy(accountFeedUnavailable = false) }
+                        updateVideos(latestFeedVideos)
+                    } else {
+                        val accountKey = account.channelHandle ?: account.email ?: account.name
+                        if (accountFeedAccountKey != accountKey) {
                             accountFeedJob?.cancel()
-                            accountFeedAccountKey = null
+                            accountFeedJob = null
                             accountFeedVideos = emptyList()
+                            accountFeedAccountKey = accountKey
                             _uiState.update { it.copy(accountFeedUnavailable = false) }
                             updateVideos(latestFeedVideos)
-                        } else {
-                            val accountKey = account.channelHandle ?: account.email ?: account.name
-                            if (accountFeedAccountKey != accountKey) {
-                                accountFeedJob?.cancel()
-                                accountFeedJob = null
-                                accountFeedVideos = emptyList()
-                                accountFeedAccountKey = accountKey
-                                _uiState.update { it.copy(accountFeedUnavailable = false) }
-                                updateVideos(latestFeedVideos)
-                            }
-                            refreshSignedInFeed()
                         }
+                        refreshSignedInFeed()
                     }
+                }
             }
 
             viewModelScope.launch(PerformanceDispatcher.diskIO) {
@@ -432,7 +432,12 @@ class SubscriptionsViewModel
                 )
             val sections =
                 subscriptionFeedSections(
-                    videos = (videos + accountFeedVideos).distinctBy(Video::id).withHighQualityThumbnails().withSubscriptionAvatars(channels),
+                    videos =
+                        (videos + accountFeedVideos)
+                            .distinctBy(
+                                Video::id,
+                            ).withHighQualityThumbnails()
+                            .withSubscriptionAvatars(channels),
                     filters = filters,
                     now = System.currentTimeMillis(),
                 )
