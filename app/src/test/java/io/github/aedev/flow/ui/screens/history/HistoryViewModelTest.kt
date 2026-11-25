@@ -4,9 +4,9 @@ import com.google.common.truth.Truth.assertThat
 import io.github.aedev.flow.data.engagement.HiddenContentStore
 import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.data.local.ViewHistory
+import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.local.dao.VideoDao
 import io.github.aedev.flow.data.local.dao.WatchHistoryDao
-import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.repository.YouTubeRepository
 import io.github.aedev.flow.data.shorts.ShortsContentFilter
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueHandoff

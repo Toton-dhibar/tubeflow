@@ -6,8 +6,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.CreationExtras
+import io.github.aedev.flow.data.comments.CommentPostUiState
 import io.github.aedev.flow.data.model.Comment
 import io.github.aedev.flow.data.model.Video
+import io.github.aedev.flow.innertube.models.AccountInfo
 import io.github.aedev.flow.innertube.models.response.PlayerResponse
 import io.github.aedev.flow.player.state.AudioTrackOption
 import io.github.aedev.flow.player.state.EnhancedPlayerState
@@ -154,6 +156,9 @@ internal fun relaxedVideoPlayerViewModel(
     every { viewModel.commentTotalText } returns MutableStateFlow(null)
     every { viewModel.commentsDisabled } returns MutableStateFlow(false)
     every { viewModel.oldestCommentsCapped } returns MutableStateFlow(false)
+    every { viewModel.commentCreateParams } returns MutableStateFlow<String?>(null)
+    every { viewModel.commentPostState } returns MutableStateFlow(CommentPostUiState())
+    every { viewModel.signedInAccount } returns MutableStateFlow<AccountInfo?>(null)
     every { viewModel.descriptionState } returns MutableStateFlow(null)
     every { viewModel.downloadedVideoIds } returns MutableStateFlow(emptySet())
     every { viewModel.videoNote } returns MutableStateFlow(null)
