@@ -169,6 +169,8 @@ jobs:
     name: Build APK
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      nightly_signed: ${{ steps.nightly_keystore.outputs.signed }}
 
     steps:
       - name: Checkout code
@@ -221,22 +223,28 @@ jobs:
           if [ -n "$NIGHTLY_KEYSTORE_BASE64" ]; then
             echo "$NIGHTLY_KEYSTORE_BASE64" | base64 --decode > nightly.keystore
             echo "signed=true" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event_name }}" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            # Main publishes the nightly testers install; a debug-signed build
-            # could not update the previous one.
-            echo "::error::NIGHTLY_KEYSTORE_BASE64 is unavailable on a main push. Refusing to publish a debug-signed nightly."
-            exit 1
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "Nightly keystore secret is not available. This run's nightly is debug-signed and is not published."
+            echo "Nightly keystore secret is not available. Skipping the nightly build and publication."
           fi
 
-      # GitHub release APKs are only published from tags, and nightly is
-      # initWith(release), so regular runs build nightly in their place.
-      - name: Build CI APKs
+      - name: Build FOSS APKs
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: >
-          ./gradlew :app:assembleGithubNightly :app:assembleFossRelease
+          ./gradlew :app:assembleFossRelease
+          ${{ github.event_name == 'pull_request' && '-Pflow.prBuild=true' || '' }}
+          --build-cache --stacktrace
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
+
+      - name: Build nightly APK
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') && steps.nightly_keystore.outputs.signed == 'true' }}
+        run: >
+          ./gradlew :app:assembleGithubNightly
           ${{ github.event_name == 'pull_request' && '-Pflow.prBuild=true' || '' }}
           --build-cache --stacktrace
         env:
@@ -311,22 +319,18 @@ jobs:
       # The run number in the file name is how the in-app updater tells
       # nightlies apart (GitHubRelease.toNightlyReleaseIfNewer).
       - name: Verify and name nightly APK
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        env:
-          NIGHTLY_SIGNED: ${{ steps.nightly_keystore.outputs.signed }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') && steps.nightly_keystore.outputs.signed == 'true' }}
         run: |
           set -euo pipefail
           src=app/build/outputs/apk/github/nightly/app-github-universal-nightly.apk
           test -f "$src"
-          if [ "$NIGHTLY_SIGNED" = "true" ]; then
-            apksigner=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner -type f | sort -V | tail -1)
-            actual=$("$apksigner" verify --print-certs "$src" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}')
-            if [ "$actual" != "$EXPECTED_NIGHTLY_SIGNER_SHA256" ]; then
-              echo "::error::The nightly is signed with '$actual', expected '$EXPECTED_NIGHTLY_SIGNER_SHA256'"
-              exit 1
-            fi
-            echo "OK nightly -> $actual"
+          apksigner=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner -type f | sort -V | tail -1)
+          actual=$("$apksigner" verify --print-certs "$src" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}')
+          if [ "$actual" != "$EXPECTED_NIGHTLY_SIGNER_SHA256" ]; then
+            echo "::error::The nightly is signed with '$actual', expected '$EXPECTED_NIGHTLY_SIGNER_SHA256'"
+            exit 1
           fi
+          echo "OK nightly -> $actual"
           mkdir -p dist-nightly
           cp "$src" "dist-nightly/flow-nightly-${GITHUB_RUN_NUMBER}.apk"
           (cd dist-nightly && sha256sum flow-nightly-*.apk | tee checksums.txt)
@@ -424,7 +428,7 @@ jobs:
           compression-level: 0
 
       - name: Upload Nightly APK
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') && steps.nightly_keystore.outputs.signed == 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: flow-nightly-apk
@@ -477,7 +481,7 @@ jobs:
     needs: [checks, tests, lint, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.nightly_signed == 'true' }}
     permissions:
       contents: write
     concurrency:
