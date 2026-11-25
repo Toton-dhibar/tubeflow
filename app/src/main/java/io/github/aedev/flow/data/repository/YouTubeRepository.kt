@@ -23,9 +23,9 @@ import io.github.aedev.flow.innertube.pages.VideoDescriptionPage
 import io.github.aedev.flow.innertube.pages.WatchPageHeader
 import io.github.aedev.flow.innertube.pages.WatchPlaylistWindow
 import io.github.aedev.flow.innertube.pages.YouTubeCountParser
-import io.github.aedev.flow.innertube.pages.renderer.AccountVideoFeedPage
 import io.github.aedev.flow.innertube.pages.channel.ChannelHeader
 import io.github.aedev.flow.innertube.pages.parseYouTubeViewCount
+import io.github.aedev.flow.innertube.pages.renderer.AccountVideoFeedPage
 import io.github.aedev.flow.innertube.pages.search.resultVideos
 import io.github.aedev.flow.innertube.pages.toWatchPageHeader
 import io.github.aedev.flow.innertube.pages.toWatchPlaylistWindow
@@ -662,7 +662,7 @@ class YouTubeRepository
                 CommentsPageResult(comments = page.comments, continuation = page.continuation)
             }
 
-        suspend fun postVideoComment(
+        internal suspend fun postVideoComment(
             videoId: String,
             createCommentParams: String,
             commentText: String,

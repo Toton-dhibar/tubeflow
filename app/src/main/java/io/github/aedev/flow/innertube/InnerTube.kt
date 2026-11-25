@@ -30,9 +30,9 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.encodeToJsonElement
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.ConnectionPool
@@ -936,7 +936,7 @@ class InnerTube {
             Json {
                 explicitNulls = false
                 encodeDefaults = true
-            }.encodeToJsonElement(client.toContext(locale, visitorData, dataSyncId))
+            }.encodeToJsonElement(Context.serializer(), client.toContext(locale, visitorData, dataSyncId))
         setBody(CommentRequestBuilder.build(context, createCommentParams, commentText))
     }
 

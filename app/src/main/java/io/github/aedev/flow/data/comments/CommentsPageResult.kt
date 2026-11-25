@@ -36,9 +36,13 @@ enum class CommentPostFailure {
 }
 
 internal sealed interface CommentPostResult {
-    data class Posted(val comment: Comment) : CommentPostResult
+    data class Posted(
+        val comment: Comment,
+    ) : CommentPostResult
 
-    data class Failed(val failure: CommentPostFailure) : CommentPostResult
+    data class Failed(
+        val failure: CommentPostFailure,
+    ) : CommentPostResult
 }
 
 data class CommentPostUiState(

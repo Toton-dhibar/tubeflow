@@ -49,7 +49,6 @@ import io.github.aedev.flow.innertube.models.response.ResolveUrlResponse
 import io.github.aedev.flow.innertube.models.response.SearchResponse
 import io.github.aedev.flow.innertube.models.response.channelVideoCountText
 import io.github.aedev.flow.innertube.pages.AlbumPage
-import io.github.aedev.flow.innertube.pages.renderer.AccountVideoFeedPage
 import io.github.aedev.flow.innertube.pages.ArtistItemsContinuationPage
 import io.github.aedev.flow.innertube.pages.ArtistItemsPage
 import io.github.aedev.flow.innertube.pages.ArtistPage
@@ -111,6 +110,7 @@ import io.github.aedev.flow.innertube.pages.reel.ReelSequencePage
 import io.github.aedev.flow.innertube.pages.reel.toReelItem
 import io.github.aedev.flow.innertube.pages.reel.toReelLockups
 import io.github.aedev.flow.innertube.pages.reel.toReelSequencePage
+import io.github.aedev.flow.innertube.pages.renderer.AccountVideoFeedPage
 import io.github.aedev.flow.innertube.pages.renderer.CommunityCommentsPage
 import io.github.aedev.flow.innertube.pages.renderer.CommunityPostsPage
 import io.github.aedev.flow.innertube.pages.renderer.FeedItemOwner

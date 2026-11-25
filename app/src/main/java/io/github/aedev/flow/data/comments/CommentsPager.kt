@@ -401,10 +401,11 @@ internal class CommentsPager(
                         }
                     }
 
-                    is CommentPostResult.Failed ->
+                    is CommentPostResult.Failed -> {
                         if (isCurrentVideo(videoId) && loadingVideoId == videoId) {
                             recordPostFailure(target, result.failure)
                         }
+                    }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled

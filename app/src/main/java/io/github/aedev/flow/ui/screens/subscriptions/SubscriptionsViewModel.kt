@@ -155,7 +155,7 @@ class SubscriptionsViewModel
             }
 
             viewModelScope.launch {
-                    youTubeCookieAuth.account.distinctUntilChanged().collectLatest { account ->
+                    youTubeCookieAuth.account.collectLatest { account ->
                         if (account == null) {
                             accountFeedJob?.cancel()
                             accountFeedAccountKey = null

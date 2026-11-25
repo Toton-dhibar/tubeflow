@@ -79,6 +79,20 @@ jobs:
           ./gradlew spotlessCheck
           --build-cache --stacktrace
 
+      - name: Export formatter changes for repair
+        if: failure()
+        run: |
+          ./gradlew spotlessApply --build-cache --stacktrace || true
+          git diff --binary > /tmp/spotless-repair.patch
+
+      - name: Upload formatter changes for repair
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: spotless-repair
+          path: /tmp/spotless-repair.patch
+          if-no-files-found: warn
+
   tests:
     name: Unit tests
     runs-on: ubuntu-24.04
