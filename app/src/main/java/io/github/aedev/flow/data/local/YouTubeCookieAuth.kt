@@ -75,18 +75,29 @@ class YouTubeCookieAuth
             restore()
             val parsed =
                 when (val result = YouTubeCookieParser.parse(input)) {
-                    is CookieParseResult.Valid -> result
-                    CookieParseResult.Empty -> return CookieImportResult.Rejected(CookieImportFailure.EMPTY)
-                    CookieParseResult.InvalidFormat -> return CookieImportResult.Rejected(CookieImportFailure.INVALID_FORMAT)
-                    CookieParseResult.MissingRequiredCookies ->
+                    is CookieParseResult.Valid -> {
+                        result
+                    }
+
+                    CookieParseResult.Empty -> {
+                        return CookieImportResult.Rejected(CookieImportFailure.EMPTY)
+                    }
+
+                    CookieParseResult.InvalidFormat -> {
+                        return CookieImportResult.Rejected(CookieImportFailure.INVALID_FORMAT)
+                    }
+
+                    CookieParseResult.MissingRequiredCookies -> {
                         return CookieImportResult.Rejected(
                             CookieImportFailure.MISSING_REQUIRED_COOKIES,
                         )
+                    }
 
-                    CookieParseResult.RequiredCookieExpired ->
+                    CookieParseResult.RequiredCookieExpired -> {
                         return CookieImportResult.Rejected(
                             CookieImportFailure.REQUIRED_COOKIE_EXPIRED,
                         )
+                    }
                 }
 
             val previousCookie = YouTube.cookie

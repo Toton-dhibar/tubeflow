@@ -115,9 +115,11 @@ internal object YouTubeCookieAuthHeaders {
         if (cookieHeader.isNullOrBlank()) return emptyMap()
         val cookies = parseCookieString(cookieHeader)
         val sapisid = cookies["SAPISID"]?.takeIf(String::isNotBlank) ?: return emptyMap()
-        val digest = MessageDigest.getInstance("SHA-1")
-            .digest("$timestampSeconds $sapisid $origin".toByteArray(Charsets.UTF_8))
-            .joinToString(separator = "") { byte -> "%02x".format(byte) }
+        val digest =
+            MessageDigest
+                .getInstance("SHA-1")
+                .digest("$timestampSeconds $sapisid $origin".toByteArray(Charsets.UTF_8))
+                .joinToString(separator = "") { byte -> "%02x".format(byte) }
         return mapOf(
             "Cookie" to cookieHeader,
             "Authorization" to "SAPISIDHASH ${timestampSeconds}_$digest",
