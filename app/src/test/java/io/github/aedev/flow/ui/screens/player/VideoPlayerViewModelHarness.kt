@@ -12,6 +12,7 @@ import io.github.aedev.flow.data.local.PlaylistRepository
 import io.github.aedev.flow.data.local.SubscriptionRepository
 import io.github.aedev.flow.data.local.VideoQuality
 import io.github.aedev.flow.data.local.ViewHistory
+import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.local.entity.WatchHistoryEntity
 import io.github.aedev.flow.data.localmedia.LocalSubtitles
 import io.github.aedev.flow.data.model.Video
@@ -61,6 +62,10 @@ internal class VideoPlayerViewModelHarness(
 ) {
     val context: Context = mockk(relaxed = true)
     val repository: YouTubeRepository = mockk(relaxed = true)
+    val youTubeCookieAuth: YouTubeCookieAuth =
+        mockk(relaxed = true) {
+            every { account } returns MutableStateFlow(null)
+        }
     val transcriptRepository: TranscriptRepository = mockk(relaxed = true)
     val viewHistory: ViewHistory = mockk(relaxed = true)
     val subscriptionRepository: SubscriptionRepository = mockk(relaxed = true)
@@ -192,6 +197,7 @@ internal class VideoPlayerViewModelHarness(
         VideoPlayerViewModel(
             context = context,
             repository = repository,
+            youTubeCookieAuth = youTubeCookieAuth,
             transcriptRepository = transcriptRepository,
             viewHistory = viewHistory,
             engagement = engagement,

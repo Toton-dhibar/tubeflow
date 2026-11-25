@@ -7,17 +7,20 @@ import io.github.aedev.flow.data.local.ChannelSubscription
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.local.SubscriptionRepository
 import io.github.aedev.flow.data.local.WatchProgressStore
+import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.local.dao.SubscriptionGroupDao
 import io.github.aedev.flow.data.local.entity.SubscriptionGroupEntity
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.recommendation.FeedExclusions
 import io.github.aedev.flow.data.recommendation.FlowNeuroEngine
+import io.github.aedev.flow.data.repository.YouTubeRepository
 import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRefreshProgress
 import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRepository
 import io.github.aedev.flow.data.subscriptions.SubscriptionRefreshPlan
 import io.github.aedev.flow.data.subscriptions.SubscriptionWatchedVideos
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import kotlinx.coroutines.CompletableDeferred
@@ -52,6 +55,11 @@ class SubscriptionsViewModelTest {
     private val playerPreferences: PlayerPreferences = mockk(relaxed = true)
     private val subscriptionGroupDao: SubscriptionGroupDao = mockk(relaxed = true)
     private val neuroEngine: FlowNeuroEngine = mockk(relaxed = true)
+    private val youTubeCookieAuth: YouTubeCookieAuth =
+        mockk(relaxed = true) {
+            every { account } returns MutableStateFlow(null)
+        }
+    private val youTubeRepository: YouTubeRepository = mockk(relaxed = true)
 
     private lateinit var viewModel: SubscriptionsViewModel
     private val viewModelStore = ViewModelStore()
@@ -98,6 +106,8 @@ class SubscriptionsViewModelTest {
                 neuroEngine = neuroEngine,
                 backupCoordinator = mockk(relaxed = true),
                 watchHistoryDao = mockk(relaxed = true),
+                youTubeCookieAuth = youTubeCookieAuth,
+                youTubeRepository = youTubeRepository,
             )
         viewModelStore.put("subscriptions", viewModel)
     }

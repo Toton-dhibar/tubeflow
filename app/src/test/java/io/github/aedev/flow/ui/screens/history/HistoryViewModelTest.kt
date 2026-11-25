@@ -6,16 +6,19 @@ import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.data.local.ViewHistory
 import io.github.aedev.flow.data.local.dao.VideoDao
 import io.github.aedev.flow.data.local.dao.WatchHistoryDao
+import io.github.aedev.flow.data.local.YouTubeCookieAuth
 import io.github.aedev.flow.data.repository.YouTubeRepository
 import io.github.aedev.flow.data.shorts.ShortsContentFilter
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueHandoff
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -32,6 +35,10 @@ class HistoryViewModelTest {
     private val youTubeRepository: YouTubeRepository = mockk(relaxed = true)
     private val videoDao: VideoDao = mockk(relaxed = true)
     private val watchHistoryDao: WatchHistoryDao = mockk(relaxed = true)
+    private val youTubeCookieAuth: YouTubeCookieAuth =
+        mockk(relaxed = true) {
+            every { account } returns MutableStateFlow(null)
+        }
 
     @Before
     fun setUp() {
@@ -72,6 +79,7 @@ class HistoryViewModelTest {
                     ShortsContentFilter(flowOf(true)),
                     ShortsQueueHandoff(),
                     HiddenContentStore(CoroutineScope(Dispatchers.Unconfined)),
+                    youTubeCookieAuth,
                 )
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -95,6 +103,7 @@ class HistoryViewModelTest {
                     ShortsContentFilter(flowOf(true)),
                     ShortsQueueHandoff(),
                     HiddenContentStore(CoroutineScope(Dispatchers.Unconfined)),
+                    youTubeCookieAuth,
                 )
             viewModel.clearHistory()
             testDispatcher.scheduler.advanceUntilIdle()
@@ -116,6 +125,7 @@ class HistoryViewModelTest {
                     ShortsContentFilter(flowOf(true)),
                     ShortsQueueHandoff(),
                     HiddenContentStore(CoroutineScope(Dispatchers.Unconfined)),
+                    youTubeCookieAuth,
                 )
             viewModel.removeFromHistory("vid_123")
             testDispatcher.scheduler.advanceUntilIdle()
