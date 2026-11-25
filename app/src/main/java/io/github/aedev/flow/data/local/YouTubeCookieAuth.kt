@@ -22,9 +22,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 internal sealed interface CookieImportResult {
-    data class Imported(val account: AccountInfo) : CookieImportResult
+    data class Imported(
+        val account: AccountInfo,
+    ) : CookieImportResult
 
-    data class Rejected(val reason: CookieImportFailure) : CookieImportResult
+    data class Rejected(
+        val reason: CookieImportFailure,
+    ) : CookieImportResult
 }
 
 internal enum class CookieImportFailure {
@@ -74,8 +78,15 @@ class YouTubeCookieAuth
                     is CookieParseResult.Valid -> result
                     CookieParseResult.Empty -> return CookieImportResult.Rejected(CookieImportFailure.EMPTY)
                     CookieParseResult.InvalidFormat -> return CookieImportResult.Rejected(CookieImportFailure.INVALID_FORMAT)
-                    CookieParseResult.MissingRequiredCookies -> return CookieImportResult.Rejected(CookieImportFailure.MISSING_REQUIRED_COOKIES)
-                    CookieParseResult.RequiredCookieExpired -> return CookieImportResult.Rejected(CookieImportFailure.REQUIRED_COOKIE_EXPIRED)
+                    CookieParseResult.MissingRequiredCookies ->
+                        return CookieImportResult.Rejected(
+                            CookieImportFailure.MISSING_REQUIRED_COOKIES,
+                        )
+
+                    CookieParseResult.RequiredCookieExpired ->
+                        return CookieImportResult.Rejected(
+                            CookieImportFailure.REQUIRED_COOKIE_EXPIRED,
+                        )
                 }
 
             val previousCookie = YouTube.cookie

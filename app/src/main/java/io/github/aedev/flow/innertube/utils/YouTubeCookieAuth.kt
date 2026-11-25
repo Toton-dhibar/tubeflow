@@ -78,24 +78,26 @@ internal object YouTubeCookieParser {
     }
 
     private fun parseNetscape(input: String): List<ParsedCookie> =
-        input.lineSequence().mapNotNull { originalLine ->
-            val line = originalLine.removePrefix("#HttpOnly_")
-            if (line.isBlank() || (originalLine.startsWith('#') && !originalLine.startsWith("#HttpOnly_"))) {
-                return@mapNotNull null
-            }
-            val columns = line.split('\t')
-            if (columns.size < 7) return@mapNotNull null
-            val domain = columns[0].trim().removePrefix(".").lowercase()
-            if (domain != "youtube.com" && !domain.endsWith(".youtube.com")) return@mapNotNull null
-            val expiresAt = columns[4].trim().toLongOrNull()
-            val name = columns[5].trim()
-            val value = columns.drop(6).joinToString("\t").trim()
-            if (name.isBlank() || value.isBlank()) {
-                null
-            } else {
-                ParsedCookie(name, value, expiresAt)
-            }
-        }.toList()
+        input
+            .lineSequence()
+            .mapNotNull { originalLine ->
+                val line = originalLine.removePrefix("#HttpOnly_")
+                if (line.isBlank() || (originalLine.startsWith('#') && !originalLine.startsWith("#HttpOnly_"))) {
+                    return@mapNotNull null
+                }
+                val columns = line.split('\t')
+                if (columns.size < 7) return@mapNotNull null
+                val domain = columns[0].trim().removePrefix(".").lowercase()
+                if (domain != "youtube.com" && !domain.endsWith(".youtube.com")) return@mapNotNull null
+                val expiresAt = columns[4].trim().toLongOrNull()
+                val name = columns[5].trim()
+                val value = columns.drop(6).joinToString("\t").trim()
+                if (name.isBlank() || value.isBlank()) {
+                    null
+                } else {
+                    ParsedCookie(name, value, expiresAt)
+                }
+            }.toList()
 
     private data class ParsedCookie(
         val name: String,
